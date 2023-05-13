@@ -1,0 +1,31 @@
+{
+  "name": "nextjs-dashboard-layout",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@apollo/client": "^3.7.14",
+    "@lens-protocol/client": "^1.0.1",
+    "@lens-protocol/react-web": "^1.0.1",
+    "@metamask/sdk": "^0.2.4",
+    "@styled-icons/material": "^10.34.0",
+    "ethers": "^6.3.0",
+    "graphql": "^16.6.0",
+    "next": "^12.0.5",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "styled-components": "^5.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "17.0.19",
+    "@types/styled-components": "^5.1.13",
+    "eslint": "7.32.0",
+    "eslint-config-next": "11.1.0",
+    "typescript": "4.4.2"
+  }
+}
