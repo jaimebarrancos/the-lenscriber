@@ -1,6 +1,14 @@
 import { ApolloClient, InMemoryCache, gql } from '@apollo/client'
+// @ts-ignore
+import omitDeep from 'omit-deep'
 
-const API_URL = 'https://api.lens.dev'
+const API_URL = 'https://api-mumbai.lens.dev'
+
+import LENS_HUB_ABI from './ABI.json'
+
+export const LENS_HUB_CONTRACT = "0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d"
+
+import { ethers } from 'ethers'
 
 /* create the API client */
 export const client = new ApolloClient({
@@ -456,3 +464,123 @@ fragment ReferenceModuleFields on ReferenceModule {
 }
 
 `
+
+
+/* GraphQL queries and mutations */
+export async function createPostTypedDataMutation (request, token) {
+  const result = await client.mutate({
+    mutation: createPostTypedData,
+    variables: {
+      request,
+    },
+    context: {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  })
+  return result.data.createPostTypedData
+}
+
+export const createPostTypedData = gql`
+mutation createPostTypedData($request: CreatePublicPostRequest!) {
+  createPostTypedData(request: $request) {
+    id
+    expiresAt
+    typedData {
+      types {
+        PostWithSig {
+          name
+          type
+        }
+      }
+      domain {
+        name
+        chainId
+        version
+        verifyingContract
+      }
+      value {
+        nonce
+        deadline
+        profileId
+        contentURI
+        collectModule
+        collectModuleInitData
+        referenceModule
+        referenceModuleInitData
+      }
+    }
+  }
+}
+`
+
+export const getProfiles = gql`
+query profiles($address: EthereumAddress!) {
+  profiles(request: {
+    ownedBy: [$address]
+  }) {
+    items {
+      handle
+      id
+    }
+  }
+}
+`
+
+export const getDefaultProfile = gql`
+query DefaultProfile($address: EthereumAddress!) {
+  defaultProfile(request: { ethereumAddress: $address}) {
+    id
+    handle
+  }
+}
+`
+
+export const validateMetadata = gql`
+query ValidatePublicationMetadata ($metadatav2: PublicationMetadataV2Input!) {
+  validatePublicationMetadata(request: {
+    metadatav2: $metadatav2
+  }) {
+    valid
+    reason
+  }
+}
+`
+
+/* helper functions */
+async function getSigner() {
+  const provider = new ethers.BrowserProvider(window.ethereum);
+  const signer = await provider.getSigner()
+  return signer
+}
+
+export const signedTypeData = async (
+  domain,
+  types,
+  value,
+) => {
+  const signer = await getSigner();
+  if (!signer) return
+  return signer.signTypedData(
+    omit(domain, '__typename'),
+    omit(types, '__typename'),
+    omit(value, '__typename')
+  )
+}
+
+export function omit (object, name) {
+  return omitDeep(object, name);
+};
+
+export const splitSignature = (signature) => {
+  return ethers.Signature.from(signature)
+}
+
+export const signCreatePostTypedData = async (request, token) => {
+  const result = await createPostTypedDataMutation(request, token)
+  const typedData = result.typedData
+  const signature = await signedTypeData(typedData.domain, typedData.types, typedData.value);
+  return { result, signature };
+}
+

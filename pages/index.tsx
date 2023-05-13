@@ -1,6 +1,5 @@
 import type { NextPage } from "next";
 import Container from "../components/Container";
-import { isRelayerResult, LensClient, development } from '@lens-protocol/client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import {client, challenge, authenticate, publicationsByUser} from "../api"
@@ -16,8 +15,6 @@ declare global {
   }
 }
 
-
-
 const Home: NextPage = () => {
   const [PostText, setPostText] = useState("")
 
@@ -27,9 +24,9 @@ const Home: NextPage = () => {
 
   const signIn = async () => {
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
+    console.log('accounts: ', accounts)
 
-
-    /***********************************/
+//     /***********************************/
     const provider = new ethers.BrowserProvider(window.ethereum);
     const signer = await provider.getSigner()
     const challengeInfo = await client.query({
@@ -49,10 +46,9 @@ const Home: NextPage = () => {
     /* if user authentication is successful, you will receive an accessToken and refreshToken */
     const { data: { authenticate: { accessToken }}} = authData
     console.log({ accessToken })
+    localStorage.setItem('lens-token', accessToken)
   }
   const getPost = async () => {
-
-
     const publications = await client.query({
       query: publicationsByUser,
       variables: { profileId: "0x01" }
@@ -68,6 +64,7 @@ console.log(publications)
         dashboard
         <button onClick={signIn}>sign in</button>
         <button onClick={getPost}>GET POST</button>
+
 
         <text>{PostText}</text>
 

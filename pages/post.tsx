@@ -1,214 +1,140 @@
-import { BigNumber, utils } from 'ethers';
 import { v4 as uuidv4 } from 'uuid';
+import { useState } from 'react'
 import { apolloClient } from '../apollo-client';
 import { login } from '../login';
 import { explicitStart, PROFILE_ID } from '../config';
-import { getAddressFromSigner, signedTypeData, splitSignature } from '../ethers.service';
-import { CreatePostTypedDataDocument, CreatePublicPostRequest } from '../graphql/generated';
-import { pollUntilIndexed } from '../indexer/has-transaction-been-indexed';
-import { Metadata, PublicationMainFocus } from '../interfaces/publication';
 import { uploadIpfs } from '../ipfs';
-import { lensHub } from '../lens-hub';
 import type { NextPage } from "next";
 import Container from "../components/Container";
+import { create } from 'ipfs-http-client'
+import { ethers } from 'ethers'
 
-const prefix = 'create post';
-export const createPostTypedData = async (request: CreatePublicPostRequest) => {
-  const result = await apolloClient.mutate({
-    mutation: CreatePostTypedDataDocument,
-    variables: {
-      request,
-    },
-  });
+import {
+  client, challenge, authenticate, getDefaultProfile,
+  signCreatePostTypedData, splitSignature, validateMetadata,
+  getProfiles
+} from '../api'
 
-  return result.data!.createPostTypedData;
-};
+const projectId = "2PkzI0wyR3M08EkxAlr4jMXxDZ1"
+const projectSecret = "ee305476603c7936b7ec8bf995a55f59"
+const auth = 'Basic ' + Buffer.from(projectId + ':' + projectSecret).toString('base64');
 
-export const signCreatePostTypedData = async (request: CreatePublicPostRequest) => {
-  const result = await createPostTypedData(request);
-  console.log('create post: createPostTypedData', result);
+import LENS_HUB_ABI from '../ABI.json'
 
-  const typedData = result.typedData;
-  console.log('create post: typedData', typedData);
+export const LENS_HUB_CONTRACT = "0xDb46d1Dc155634FbC732f92E853b10B288AD5a1d"
 
-  const signature = await signedTypeData(typedData.domain, typedData.types, typedData.value);
-  console.log('create post: signature', signature);
 
-  return { result, signature };
-};
-
-export const pollAndIndexPost = async (txHash: string, profileId: string, prefix: string) => {
-  console.log(`${prefix}: poll until indexed`);
-  const indexedResult = await pollUntilIndexed({ txHash });
-
-  console.log(`${prefix}: profile has been indexed`);
-
-  const logs = indexedResult.txReceipt!.logs;
-
-  console.log(`${prefix}: logs`, logs);
-
-  const topicId = utils.id(
-    'PostCreated(uint256,uint256,string,address,bytes,address,bytes,uint256)'
-  );
-  console.log('topicid we care about', topicId);
-
-  const profileCreatedLog = logs.find((l: any) => l.topics[0] === topicId);
-  console.log(`${prefix}: created log`, profileCreatedLog);
-
-  let profileCreatedEventLog = profileCreatedLog!.topics;
-  console.log(`${prefix}: created event logs`, profileCreatedEventLog);
-
-  const publicationId = utils.defaultAbiCoder.decode(['uint256'], profileCreatedEventLog[2])[0];
-
-  const contractPublicationId = BigNumber.from(publicationId).toHexString();
-
-  const internalPublicationId = profileId + '-' + contractPublicationId;
-
-  console.log(`${prefix}: contract publication id`, contractPublicationId);
-  console.log(`${prefix}: internal publication id`, internalPublicationId);
-  return internalPublicationId;
-};
-
-const createPost = async () => {
-  const profileId = PROFILE_ID;
-  if (!profileId) {
-    throw new Error('Must define PROFILE_ID in the .env to run this');
-  }
-
-  const address = getAddressFromSigner();
-  console.log(`${prefix}: address`, address);
-
-  await login(address);
-
-  const ipfsResult = await uploadIpfs<Metadata>({
-    version: '2.0.0',
-    mainContentFocus: PublicationMainFocus.TEXT_ONLY,
-    metadata_id: uuidv4(),
-    description: 'Description',
-    locale: 'en-US',
-    content: 'Content',
-    external_url: null,
-    image: null,
-    imageMimeType: null,
-    name: 'Name',
-    attributes: [],
-    tags: ['using_api_examples'],
-    appId: 'api_examples_github',
-  });
-  console.log(`${prefix}: ipfs result`, ipfsResult);
-
-  // hard coded to make the code example clear
-  const createPostRequest: CreatePublicPostRequest = {
-    profileId,
-    contentURI: `ipfs://${ipfsResult.path}`,
-    collectModule: {
-      // feeCollectModule: {
-      //   amount: {
-      //     currency: currencies.enabledModuleCurrencies.map(
-      //       (c: any) => c.address
-      //     )[0],
-      //     value: '0.000001',
-      //   },
-      //   recipient: address,
-      //   referralFee: 10.5,
-      // },
-      // revertCollectModule: true,
-      freeCollectModule: { followerOnly: true },
-      // limitedFeeCollectModule: {
-      //   amount: {
-      //     currency: '0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889',
-      //     value: '2',
-      //   },
-      //   collectLimit: '20000',
-      //   recipient: '0x3A5bd1E37b099aE3386D13947b6a90d97675e5e3',
-      //   referralFee: 0,
-      // },
-      // multirecipientFeeCollectModule: {
-      //   amount: {
-      //     currency: '0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889',
-      //     value: '0.001',
-      //   },
-      //   collectLimit: '2',
-      //   endTimestamp: '2025-01-01T00:00:00.000Z',
-      //   referralFee: 0,
-      //   followerOnly: false,
-      //   recipients: [
-      //     {
-      //       recipient: address,
-      //       split: 50,
-      //     },
-      //     {
-      //       recipient: '0xacab2c2Cdde3a5839b91BABEfFd5fd5128590d6f',
-      //       split: 50,
-      //     },
-      //   ],
-      // },
-      // aaveFeeCollectModule: {
-      //   amount: {
-      //     currency: '0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889',
-      //     value: '0.001',
-      //   },
-      //   collectLimit: '2',
-      //   endTimestamp: '2025-01-01T00:00:00.000Z',
-      //   referralFee: 0,
-      //   followerOnly: false,
-      //   recipient: address,
-      // },
-      // erc4626FeeCollectModule: {
-      //   amount: {
-      //     currency: '0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889',
-      //     value: '0.001',
-      //   },
-      //   collectLimit: '2',
-      //   endTimestamp: '2025-01-01T00:00:00.000Z',
-      //   referralFee: 0,
-      //   followerOnly: false,
-      //   recipient: address,
-      //   vault: '0x3A5bd1E37b099aE3386D13947b6a90d97675e5e3', // MUST BE VALID ERC4626 VAULT
-      // },
-    },
-    referenceModule: {
-      followerOnlyReferenceModule: false,
-    },
-  };
-
-  const signedResult = await signCreatePostTypedData(createPostRequest);
-  console.log(`${prefix}: signedResult`, signedResult);
-
-  const typedData = signedResult.result.typedData;
-
-  const { v, r, s } = splitSignature(signedResult.signature);
-
-  const tx = await lensHub.postWithSig({
-    profileId: typedData.value.profileId,
-    contentURI: typedData.value.contentURI,
-    collectModule: typedData.value.collectModule,
-    collectModuleInitData: typedData.value.collectModuleInitData,
-    referenceModule: typedData.value.referenceModule,
-    referenceModuleInitData: typedData.value.referenceModuleInitData,
-    sig: {
-      v,
-      r,
-      s,
-      deadline: typedData.value.deadline,
-    },
-  });
-  console.log(`${prefix}: tx hash`, tx.hash);
-
-  await pollAndIndexPost(tx.hash, profileId, prefix);
-};
-
-(async () => {
-  if (explicitStart(__filename)) {
-    await createPost();
-  }
-})();
-
+const ipfsClient = create({
+  host: 'ipfs.infura.io',
+  port: 5001,
+  protocol: 'https',
+  headers: {
+      authorization: auth,
+  },
+})
 
 const Post: NextPage = () => {
+  const [address, setAddress] = useState()
+  const [session, setSession] = useState(null)
+  const [postData, setPostData] = useState('')
+  const [profileId, setProfileId] = useState('')
+  const [handle, setHandle] = useState('')
+  async function createPost() {
+    if (!postData) return
+    const ipfsData = await uploadToIPFS()
+    console.log('ipfsData: ', ipfsData)
+
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
+
+    const profileData = await client.query({
+      query: getProfiles,
+      variables: {
+        address: accounts[0]
+      }
+    })
+
+    console.log({ profileData})
+
+    const profileId = profileData.data.profiles.items[0].id
+
+    const createPostRequest = {
+      profileId,
+      contentURI: 'ipfs://' + ipfsData.path,
+      collectModule: {
+        freeCollectModule: { followerOnly: true }
+      },
+      referenceModule: {
+        followerOnlyReferenceModule: false
+      },
+    }
+
+    const token = localStorage.getItem('lens-token')
+    console.log('token: ', token)
+
+    console.log('createPostRequest: ', createPostRequest)
+    try {
+      const signedResult = await signCreatePostTypedData(createPostRequest, token)
+      const typedData = signedResult.result.typedData
+      const { v, r, s } = splitSignature(signedResult.signature)
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner()
+      const lensHub = new ethers.Contract(LENS_HUB_CONTRACT, LENS_HUB_ABI, signer)
+
+      const tx = await lensHub.postWithSig({
+        profileId: typedData.value.profileId,
+        contentURI: typedData.value.contentURI,
+        collectModule: typedData.value.collectModule,
+        collectModuleInitData: typedData.value.collectModuleInitData,
+        referenceModule: typedData.value.referenceModule,
+        referenceModuleInitData: typedData.value.referenceModuleInitData,
+        sig: {
+          v,
+          r,
+          s,
+          deadline: typedData.value.deadline,
+        },
+      })
+      console.log('successfully created post: tx hash', tx.hash)
+    } catch (err) {
+      console.log('error posting publication: ', err)
+    }
+  }
+  async function uploadToIPFS() {
+    const metaData = {
+      version: '2.0.0',
+      content: postData,
+      description: postData,
+      name: `Post by @${handle}`,
+      external_url: `https://lenster.xyz/u/${handle}`,
+      metadata_id: uuidv4(),
+      mainContentFocus: 'TEXT_ONLY',
+      attributes: [],
+      locale: 'en-US',
+    }
+
+    const result = await client.query({
+      query: validateMetadata,
+      variables: {
+        metadatav2: metaData
+      }
+    })
+    console.log('Metadata verification request: ', result)
+      
+    const added = await ipfsClient.add(JSON.stringify(metaData))
+    return added
+  }
+
+  function onChange(e) {
+    setPostData(e.target.value)
+  }
   return(
     <Container title="Post">
       <div>posting page</div>
+      <textarea
+        onChange={onChange}
+      />
+      <button onClick={createPost}>Create Post</button>
     </Container>
   );
 };
