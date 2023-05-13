@@ -1,4 +1,3 @@
-
 import type { NextPage } from "next";
 import Container from "../components/Container";
 import { isRelayerResult, LensClient, development } from '@lens-protocol/client'
@@ -59,7 +58,7 @@ const Home: NextPage = () => {
       variables: { profileId: "0x01" }
     })
 
-
+console.log(publications)
     setPostText(publications.toString())
 
   }
