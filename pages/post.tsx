@@ -17,6 +17,7 @@ import {
 
 const projectId = "2PkzI0wyR3M08EkxAlr4jMXxDZ1"
 const projectSecret = "ee305476603c7936b7ec8bf995a55f59"
+
 const auth = 'Basic ' + Buffer.from(projectId + ':' + projectSecret).toString('base64');
 
 import LENS_HUB_ABI from '../ABI.json'
@@ -39,7 +40,7 @@ const Post: NextPage = () => {
   const [postData, setPostData] = useState('')
   const [profileId, setProfileId] = useState('')
   const [handle, setHandle] = useState('')
-  
+
   async function createPost() {
     if (!postData) return
     const ipfsData = await uploadToIPFS()
@@ -97,7 +98,7 @@ const Post: NextPage = () => {
         },
       })
 
-
+      
       console.log('successfully created post: tx hash', tx.hash)
     } catch (err) {
       console.log('error posting publication: ', err)
@@ -134,14 +135,14 @@ const Post: NextPage = () => {
   return(
     <Container title="Post">
       <div style={{display: "grid", gridTemplateRows: "4em 20em 5em", justifyItems: "center"}}>
-      <div>Post your blog!</div>
+      <div className='postTitle'>Post!</div>
       
       <textarea
       style={{width: "22em", height:"18m", borderWidth: "0.4em"}}
         onChange={onChange}
       />
 
-      <button style={{width: "8em", height:"5em" }} onClick={createPost}>Create Post</button>
+      <button style={{width: "8em", height:"5em" }} onClick={createPost}>New article!</button>
       </div>
     </Container>
   );
