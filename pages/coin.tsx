@@ -15,20 +15,23 @@ const signal = "my_signal";
 const Coin: NextPage = () => {
   const { setLoggedIn, isLoggedIn } = useAuth();
   console.log({ isLoggedIn, setLoggedIn });
-  const accounts = async() => await window.ethereum.request({ method: 'eth_requestAccounts' })
+
 
 const onSuccess = async (result: ISuccessResult) => {
-  console.log("sending: ", { action, signal, ...result });
+  const accounts: string[] = await window.ethereum.request({ method: 'eth_requestAccounts' })
+  console.log("sending: ", { action, signal, ...result, accounts });
   const res = await axios.post("/api/login", {
+    ...result,
     action,
     signal,
-    ...result,
     accounts
   });
   setLoggedIn(res.data === "Logged In");
   console.log(res.data === "Logged in", res.data);
   // do some logic to mark as logged in
 };
+
+const accountsB = async() => await window.ethereum.request({ method: 'eth_requestAccounts' })
 
   return (
     <Container title="Coin">
@@ -41,7 +44,7 @@ const onSuccess = async (result: ISuccessResult) => {
         // walletConnectProjectId="get_this_from_walletconnect_portal"
       >
         {({ open }) => <button onClick={open}>
-          {!accounts ? "Connect Wallet First" : "Verify with Worldcoin"}
+          {!accountsB ? "Connect Wallet First" : "Verify with Worldcoin"}
         </button>}
       </IDKitWidget>
     </Container>

@@ -6,8 +6,12 @@ type MenuItemsListProps = {
   options: MenuItemType[];
 };
 
-export default function MenuItemsList({ options }: MenuItemsListProps) {
-  return (
+
+export default function AuthProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {  return (
     <ListContainer>
       {options.map((option) => (
         <MenuItem menuItem={option} key={option.id} />

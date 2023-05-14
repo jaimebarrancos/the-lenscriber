@@ -14,7 +14,7 @@ export default async function handler(
     credential_type,
     action,
     signal,
-    address,
+    accounts ,
   } = req.body;
   try {
     const fetchRes = await fetch(apiUrl, {
@@ -32,9 +32,9 @@ export default async function handler(
       }),
     });
     if (fetchRes.status === 200) {
-      await db.doc(`user/${address}`).set(
+      await db.doc(`user/${accounts[0]}`).set(
         {
-          address,
+          accounts,
           isVerified: true,
         },
         { merge: true }
