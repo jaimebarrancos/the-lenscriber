@@ -39,6 +39,7 @@ const Post: NextPage = () => {
   const [postData, setPostData] = useState('')
   const [profileId, setProfileId] = useState('')
   const [handle, setHandle] = useState('')
+  
   async function createPost() {
     if (!postData) return
     const ipfsData = await uploadToIPFS()
@@ -95,6 +96,8 @@ const Post: NextPage = () => {
           deadline: typedData.value.deadline,
         },
       })
+
+
       console.log('successfully created post: tx hash', tx.hash)
     } catch (err) {
       console.log('error posting publication: ', err)
@@ -130,11 +133,16 @@ const Post: NextPage = () => {
   }
   return(
     <Container title="Post">
-      <div>posting page</div>
+      <div style={{display: "grid", gridTemplateRows: "4em 20em 5em", justifyItems: "center"}}>
+      <div>Post your blog!</div>
+      
       <textarea
+      style={{width: "22em", height:"18m", borderWidth: "0.4em"}}
         onChange={onChange}
       />
-      <button onClick={createPost}>Create Post</button>
+
+      <button style={{width: "8em", height:"5em" }} onClick={createPost}>Create Post</button>
+      </div>
     </Container>
   );
 };
